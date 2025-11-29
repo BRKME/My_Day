@@ -173,19 +173,42 @@ class TaskTrackerBot:
     def update_original_message_with_progress(self, original_text, tasks, completed):
         """ЭТАП 3: Обновляет исходное сообщение с прогресс-барами"""
         lines = original_text.split('\n')
+        
+        # ШАГ 1: ОЧИСТКА - удаляем ВСЕ старые прогресс-бары и галочки
+        cleaned_lines = []
+        for line in lines:
+            stripped = line.strip()
+            
+            # Пропускаем старые прогресс-бары
+            if stripped.startswith('📊') or stripped.startswith('🎯 Общий прогресс') or stripped.startswith('💪 Баллы'):
+                continue
+            
+            # Убираем старые галочки из задач
+            if line.startswith('•') and '☑' in line:
+                # Удаляем все галочки и восстанавливаем оригинал
+                cleaned = line.replace('☑ ', '').replace(' ☑', '')
+                # Убираем лишние пробелы
+                parts = cleaned.split('•', 1)
+                if len(parts) == 2:
+                    cleaned = '• ' + parts[1].strip()
+                cleaned_lines.append(cleaned)
+            else:
+                cleaned_lines.append(line)
+        
+        # ШАГ 2: ДОБАВЛЕНИЕ - добавляем новые прогресс-бары и галочки
         updated_lines = []
         current_section = None
         task_counters = {'morning': 0, 'day': 0, 'evening': 0}
         
-        for line in lines:
+        for line in cleaned_lines:
             clean_line = line.replace('<b>', '').replace('</b>', '')
             
             # Определяем секцию
-            if '☀️ Утренние задачи' in clean_line:
+            if '☀️' in clean_line and 'Утренн' in clean_line:
                 current_section = 'morning'
                 updated_lines.append(line)
                 continue
-            elif '🌤️ Дневные задачи' in clean_line:
+            elif '🌤️' in clean_line and 'Дневн' in clean_line:
                 current_section = 'day'
                 
                 # Добавляем прогресс-бар для утра ПЕРЕД дневными задачами
@@ -194,7 +217,8 @@ class TaskTrackerBot:
                     morning_total = len(tasks['morning'])
                     morning_perc = int((morning_done / morning_total * 100)) if morning_total > 0 else 0
                     morning_bar = self.get_progress_bar(morning_perc)
-                    updated_lines.append(f"\n📊 <b>Утро:</b> {morning_bar} {morning_done}/{morning_total} ({morning_perc}%)\n")
+                    updated_lines.append(f"📊 <b>Утро:</b> {morning_bar} {morning_done}/{morning_total} ({morning_perc}%)")
+                    updated_lines.append("")  # Пустая строка
                 
                 updated_lines.append(line)
                 continue
@@ -207,11 +231,12 @@ class TaskTrackerBot:
                     day_total = len(tasks['day'])
                     day_perc = int((day_done / day_total * 100)) if day_total > 0 else 0
                     day_bar = self.get_progress_bar(day_perc)
-                    updated_lines.append(f"\n📊 <b>День:</b> {day_bar} {day_done}/{day_total} ({day_perc}%)\n")
+                    updated_lines.append(f"📊 <b>День:</b> {day_bar} {day_done}/{day_total} ({day_perc}%)")
+                    updated_lines.append("")  # Пустая строка
                 
                 updated_lines.append(line)
                 continue
-            elif '⛔' in line or 'Нельзя' in line:
+            elif any(marker in clean_line for marker in ['⛔', '⛔️', 'Нельзя делать']):
                 current_section = None
                 
                 # Добавляем прогресс-бар для вечера ПЕРЕД "Нельзя"
@@ -220,22 +245,24 @@ class TaskTrackerBot:
                     evening_total = len(tasks['evening'])
                     evening_perc = int((evening_done / evening_total * 100)) if evening_total > 0 else 0
                     evening_bar = self.get_progress_bar(evening_perc)
-                    updated_lines.append(f"\n📊 <b>Вечер:</b> {evening_bar} {evening_done}/{evening_total} ({evening_perc}%)\n")
+                    updated_lines.append(f"📊 <b>Вечер:</b> {evening_bar} {evening_done}/{evening_total} ({evening_perc}%)")
+                    updated_lines.append("")  # Пустая строка
                 
                 updated_lines.append(line)
                 continue
-            elif '🎯' in line and 'миссия' in line.lower():
+            elif '🎯' in clean_line and 'миссия' in clean_line.lower():
                 current_section = None
                 
-                # Если нет вечера, но есть другие - добавляем общий прогресс
+                # Добавляем общий прогресс ПЕРЕД "Твоя миссия"
                 total_done = len(completed.get('morning', [])) + len(completed.get('day', [])) + len(completed.get('evening', []))
                 total_tasks = len(tasks['morning']) + len(tasks['day']) + len(tasks['evening'])
                 
                 if total_tasks > 0:
                     total_perc = int((total_done / total_tasks * 100))
                     total_bar = self.get_progress_bar(total_perc, length=10)
-                    updated_lines.append(f"\n🎯 <b>Общий прогресс:</b> {total_bar} {total_done}/{total_tasks} ({total_perc}%)")
-                    updated_lines.append(f"💪 <b>Баллы:</b> {total_done} из {total_tasks}\n")
+                    updated_lines.append(f"🎯 <b>Общий прогресс:</b> {total_bar} {total_done}/{total_tasks} ({total_perc}%)")
+                    updated_lines.append(f"💪 <b>Баллы:</b> {total_done} из {total_tasks}")
+                    updated_lines.append("")  # Пустая строка
                 
                 updated_lines.append(line)
                 continue
@@ -246,8 +273,9 @@ class TaskTrackerBot:
                 is_done = idx in completed.get(current_section, [])
                 
                 if is_done:
-                    # Добавляем галочку перед задачей
-                    updated_lines.append(f"• ☑ {line[1:].strip()}")
+                    # Добавляем ОДНУ галочку перед задачей
+                    task_text = line[1:].strip()  # Убираем •
+                    updated_lines.append(f"• ☑ {task_text}")
                 else:
                     updated_lines.append(line)
                 
