@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 class TaskTrackerBot:
     def __init__(self):
-        self.telegram_token = "8442392037:AAEiM_b4QfdFLqbmmc1PXNvA99yxmFVLEp8"
+        self.telegram_token = os.getenv('TELEGRAM_TOKEN', '')
+        if not self.telegram_token:
+            raise ValueError("❌ TELEGRAM_TOKEN не найден!")
         self.chat_id = "350766421"
         self.stats_file = "stats.json"
         self.last_update_id = 0
