@@ -48,8 +48,10 @@ jobs:
           echo "period=${{ github.event.inputs.period || 'morning' }}" >> $GITHUB_OUTPUT
         fi
         
-    - name: Send notification
-      env:
-        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-      run: |
-        python notifier.py ${{ steps.period.outputs.period }}
+          - name: Send notification
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}   # ← ЭТА СТРОКА ОБЯЗАТЕЛЬНА!
+        run: |
+          echo "Запуск с периодом: ${{ steps.period.outputs.period }}"
+          python notifier.py ${{ steps.period.outputs.period }}
