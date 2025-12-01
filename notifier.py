@@ -13,16 +13,18 @@ logger = logging.getLogger(__name__)
 import os
 
 class PersonalScheduleNotifier:
-    def __init__(self):
-        self.telegram_token = os.getenv('TELEGRAM_TOKEN', '')
+def __init__(self):
+        self.telegram_token = os.getenv('TELEGRAM_TOKEN')
         if not self.telegram_token:
             raise ValueError("❌ TELEGRAM_TOKEN не найден в переменных окружения!")
-        self.chat_id = "350766421"
+
+        self.chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        if not self.chat_id:
+            raise ValueError("❌ TELEGRAM_CHAT_ID не найден в переменных окружения! Укажи ID канала (например -1001234567890)")
+
+        logger.info(f"Notifier запущен | Отправка в чат: {self.chat_id}")
         
-        # Ссылка на молитву на GitHub Pages
         self.prayer_url = "https://brkme.github.io/My_Day/prayer.html"
-        
-        # Ссылка на семейный совет на GitHub Pages
         self.ss_url = "https://brkme.github.io/My_Day/ss.html"
         
         self.wisdoms = [
