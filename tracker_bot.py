@@ -794,22 +794,20 @@ class TaskTrackerBot:
         """HTTP endpoint для Railway health check"""
         return web.Response(text="OK", status=200)
     
-    async def run(self):
-        """Основной цикл бота"""
-        logger.info("🤖 Tracker Bot запущен!")
-        logger.info("📊 Слушаю обновления...")
-        
-        # Запускаем HTTP сервер для Railway
+   async def run(self):
+        logger.info("Tracker Bot запущен!")
+
         app = web.Application()
         app.router.add_get('/', self.health_check)
         app.router.add_get('/health', self.health_check)
-        
-        port = 443   # ← ЖЁСТКО 443 — это 100% сработает
+
+        # ЖЁСТКО 443 — Railway не имеет права переопределить
+        port = 443
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, '0.0.0.0', port)
         await site.start()
-        logger.info(f"🌐 HTTP сервер запущен на порту {port}")
+        logger.info(f"HTTP сервер запущен на порту {port} (принудительно)")
         
         last_schedule_check = datetime.now()
         
