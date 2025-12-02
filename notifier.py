@@ -26,7 +26,7 @@ def __init__(self):
         logger.info(f"Notifier запущен | Отправка в: {self.chat_id}")
 
         self.prayer_url = "https://brkme.github.io/My_Day/prayer.html"
-        self.ss_url = "https://brkme.github.io/My_Day/ss.html
+        self.ss_url = "https://brkme.github.io/My_Day/ss.html"
         
         self.wisdoms = [
     # Действие и начало дела
