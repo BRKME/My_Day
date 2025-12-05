@@ -182,7 +182,7 @@ class TaskTrackerBot:
             stripped = line.strip()
             
             # Пропускаем старые прогресс-бары
-            if stripped.startswith('📊') or stripped.startswith('🎯 Общий прогресс') or stripped.startswith('💪 Баллы'):
+            if stripped.startswith('📊') or stripped.startswith('🎯 Общий прогресс'):
                 continue
             
             # Убираем старые звёздочки из задач
@@ -260,8 +260,7 @@ class TaskTrackerBot:
                     total_perc = int((total_done / total_tasks * 100))
                     total_bar = self.get_progress_bar(total_perc, length=10)
                     updated_lines.append(f"🎯 <b>Общий прогресс:</b> {total_bar} {total_done}/{total_tasks} ({total_perc}%)")
-                    updated_lines.append(f"💪 <b>Баллы:</b> {total_done} из {total_tasks}")
-                    # Пустая строка убрана - миссия идёт сразу
+                    # Строка "Баллы" убрана
                 
                 updated_lines.append(line)
                 continue
