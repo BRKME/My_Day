@@ -617,12 +617,13 @@ class TaskTrackerBot:
                 completed = {
                     'morning': existing.get('morning', {}).get('completed', []),
                     'day': existing.get('day', {}).get('completed', []),
+                    'cant_do': existing.get('cant_do', {}).get('completed', []),
                     'evening': existing.get('evening', {}).get('completed', [])
                 }
                 logger.info(f"📊 Загружен существующий прогресс за {today_key}")
             else:
                 # Новый день, начинаем с нуля
-                completed = {'morning': [], 'day': [], 'evening': []}
+                completed = {'morning': [], 'day': [], 'cant_do': [], 'evening': []}
             
             self.message_state[message_id] = {
                 'tasks': tasks,
