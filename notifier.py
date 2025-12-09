@@ -511,6 +511,33 @@ class PersonalScheduleNotifier:
             logger.error(f"❌ Ошибка: {e}")
             return "01.01.2024", "monday", {}
 
+    def check_yesterday_penalty(self):
+        """Проверяет был ли штраф вчера"""
+        try:
+            from datetime import timedelta
+            yesterday = datetime.now() - timedelta(days=1)
+            yesterday_key = yesterday.strftime("%Y-%m-%d")
+            
+            # Загружаем stats.json
+            if os.path.exists('stats.json'):
+                with open('stats.json', 'r', encoding='utf-8') as f:
+                    stats = json.load(f)
+                
+                if yesterday_key in stats:
+                    # Считаем количество звёзд в "НЕЛЬЗЯ"
+                    cant_do_completed = stats[yesterday_key].get('cant_do', {}).get('completed', [])
+                    penalty_count = len(cant_do_completed)
+                    
+                    if penalty_count > 0:
+                        # За каждую звезду +30 отжиманий
+                        total_pushups = penalty_count * 30
+                        return f"Отжимания {total_pushups} раз (5 min Штраф за {penalty_count} срыв{'а' if penalty_count > 1 else ''})"
+            
+            return None
+        except Exception as e:
+            logger.error(f"❌ Ошибка проверки штрафа: {e}")
+            return None
+
     async def format_morning_day_message(self, date_str, day_of_week, schedule):
         day_names = {'monday': 'Понедельник', 'tuesday': 'Вторник', 'wednesday': 'Среда', 'thursday': 'Четверг', 'friday': 'Пятница', 'saturday': 'Суббота', 'sunday': 'Воскресенье'}
         day_ru = day_names.get(day_of_week, day_of_week)
@@ -529,6 +556,12 @@ class PersonalScheduleNotifier:
                 content += weekend_forecast
         
         content += "\n"  # Пустая строка перед задачами
+        
+        # Проверяем штраф за вчера
+        penalty_task = self.check_yesterday_penalty()
+        if penalty_task:
+            content += f"<b>⚠️ ШТРАФ ЗА ВЧЕРА:</b>\n"
+            content += f"• {penalty_task}\n\n"
         
         if schedule.get('день'):
             content += "<b>📋 Дневные задачи:</b>\n"  # Жирный, новый эмодзи
