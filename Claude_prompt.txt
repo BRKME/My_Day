@@ -29,3 +29,5 @@ Assume:
 - The code is for production
 - The user understands the code and does not need explanations
 - Token and codebase size matter more than readability
+After completing the task, report completion with a single short status line describing what was done. No explanations.
+
