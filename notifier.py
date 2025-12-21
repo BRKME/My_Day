@@ -6,11 +6,11 @@ from calendar import monthcalendar
 import logging
 import random
 import sys
+import os
+import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-import os
 
 class PersonalScheduleNotifier:
     def __init__(self):
@@ -22,78 +22,50 @@ class PersonalScheduleNotifier:
         if not self.chat_id:
             raise ValueError("❌ TELEGRAM_CHAT_ID не найден в переменных окружения!")
         
-        # Ссылка на молитву на GitHub Pages
         self.prayer_url = "https://brkme.github.io/OK_My_Day_Shedule/prayer.html"
-        
-        # Ссылка на карьеру на GitHub Pages
+        self.ss_url = "https://brkme.github.io/OK_My_Day_Shedule/ss.html"
         self.career_url = "https://brkme.github.io/OK_My_Day_Shedule/career.html"
         
-        # Ссылка на семейный совет на GitHub Pages
-        self.ss_url = "https://brkme.github.io/OK_My_Day_Shedule/ss.html"
-        
         self.wisdoms = [
-    # Действие и начало дела
     "Лучший способ начать — перестать говорить и начать делать. — Уолт Дисней",
     "Не ждите. Время никогда не будет подходящим. — Наполеон Хилл",
     "Начало — самая важная часть работы. — Платон",
     "Путь в тысячу миль начинается с одного шага. — Лао-цзы",
     "Делай сегодня то, что другие не хотят, завтра будешь жить так, как другие не могут. — Джаред Лето",
-    
-    # Успех и достижения
     "Успех — это сумма маленьких усилий, повторяемых день за днём. — Роберт Кольер",
     "Я твердо верю в удачу, и чем больше я работаю — тем я удачливее. — Томас Джефферсон",
     "Неудача — это просто возможность начать снова, но уже более мудро. — Генри Форд",
     "Единственный способ сделать великую работу — любить то, что ты делаешь. — Стив Джобс",
     "Успех обычно приходит к тем, кто слишком занят, чтобы его искать. — Генри Дэвид Торо",
-    
-    # Дисциплина и постоянство
     "Дисциплина — это мост между целями и достижениями. — Джим Рон",
     "Мы есть то, что мы постоянно делаем. Совершенство — не действие, а привычка. — Аристотель",
     "Неважно, как медленно ты продвигаешься, главное, что ты не останавливаешься. — Конфуций",
     "Мотивация — это то, что заставляет вас начать. Привычка — это то, что заставляет продолжать. — Джим Рюн",
-    
-    # Утро и начало дня
     "Каждое утро у нас есть два выбора: продолжать спать со своими мечтами или встать и осуществлять их. — Неизвестный автор",
     "Потерянное утро остается потерянным на весь день. — Ричард Уэйтли",
     "Каждый день даёт шанс стать лучше. — Неизвестный автор",
-    
-    # Мотивация и вдохновение
     "Самый верный способ добиться успеха — просто попробовать ещё раз. — Томас Эдисон",
     "Если вы можете мечтать об этом, вы можете это сделать. — Уолт Дисней",
     "Ваше время ограничено, не тратьте его, живя чужой жизнью. — Стив Джобс",
     "Я благодарен всем, кто сказал мне 'нет'. Благодаря им я делаю всё сам. — Альберт Эйнштейн",
-    
-    # Преодоление трудностей
     "В центре каждой трудности — возможность. — Альберт Эйнштейн",
     "Сила не приходит от физических способностей. Она приходит от непреклонной воли. — Махатма Ганди",
     "Препятствия — это те страшные вещи, которые вы видите, когда отводите взгляд от цели. — Генри Форд",
-    
-    # Стоицизм и мудрость
     "Жизнь достаточно длинна, если ею хорошо распорядиться. — Сенека",
     "Если это неправильно — не делай, если это не правда — не говори. — Марк Аврелий",
     "Окружай себя теми, кто делает тебя лучше. — Сенека",
     "Когда что-то не в твоей власти — не волнуйся об этом. — Эпиктет",
-    
-    # Действие vs размышления
     "Знание без действия бесполезно. — Томас Фуллер",
     "Действие — основной ключ к успеху. — Пабло Пикассо",
-    "Никогда не путайте движение с действием. — Эрнеスト Хемингуэй",
-    
-    # Цели и планирование
+    "Никогда не путайте движение с действием. — Эрнест Хемингуэй",
     "Цель без плана — это просто желание. — Антуан де Сент-Экзюпери",
     "Установите свои цели достаточно высоко, и не останавливайтесь, пока не достигнете их. — Бо Джексон",
     "Люди с целями преуспевают, потому что знают, куда идут. — Эрл Найтингейл",
-    
-    # Воображение и творчество
     "Воображение важнее, чем знания. Знания ограничены, тогда как воображение охватывает целый мир. — Альберт Эйнштейн",
     "Логика доставит вас из пункта А в пункт Б. Воображение доставит вас куда угодно. — Альберт Эйнштейн",
-    
-    # Личностный рост
     "Мы сами должны стать теми переменами, которые хотим видеть в мире. — Махатма Ганди",
     "Лучший способ предсказать свое будущее — создать его самому. — Питер Друкер",
     "Инвестиция в знания всегда даёт наибольшую прибыль. — Бенджамин Франклин",
-    
-    # Радость и позитив
     "Счастье — это не нечто готовое. Оно зависит от ваших собственных действий. — Далай-лама",
     "Радость не в вещах, а в нас самих. — Рихард Вагнер",
     "Успех — это способность идти от одной неудачи к другой, не теряя энтузиазма. — Уинстон Черчилль"
@@ -275,11 +247,11 @@ class PersonalScheduleNotifier:
                     'Читать в дороге (30 min это Спорт для мозга)',
                     'Семейный ужин (30 min)',
                     'Марта моет посуду (15 min Учим ответственности)',
-                    'Отдых (120 min Ментальная перезагрузка)',
+                    'Отдых (60 min Ментальная перезагрузка)',
+                    'CRPT LP (30 min)',
                     'Pet Project (120 min)',
                     'Читать с Мартой (20 min)',
                     'GROK сессия с психологом (15 min)',
-                    'Янтарные бусы - то символ свободы (30 min Семейный ритуал)',
                     'Эмоциональный дневник (10 min управляешь эмоциями и счастьем)',
                     'Включи увлажнитель (1 min Здоровье лёгких)',
                     'Проверить оценки детей (5 min Контроль учёбы)',
@@ -310,7 +282,8 @@ class PersonalScheduleNotifier:
                 'вечер': [
                     'Читать в дороге (30 min это Спорт для мозга)',
                     'Семейный ужин (30 min)',
-                    'Аркаша моет посуду (15 min Учим ответственности)',
+                    'Родители моют посуду (15 min Время вдвоём)',
+                    'Отдых (60 min Ментальная перезагрузка)',
                     'Pet Project (120 min)',
                     'Читать с Мартой (20 min)',
                     'GROK сессия с психологом (15 min)',
@@ -347,182 +320,71 @@ class PersonalScheduleNotifier:
     def get_random_wisdom(self):
         return random.choice(self.wisdoms)
 
-    def get_weather_description(self, weather_code):
-        """Возвращает описание погоды по коду WMO"""
-        weather_descriptions = {
-            0: "☀️ Ясно",
-            1: "🌤️ Малооблачно",
-            2: "⛅ Переменная облачность",
-            3: "☁️ Пасмурно",
-            45: "🌫️ Туман",
-            48: "🌫️ Изморозь",
-            51: "🌦️ Лёгкая морось",
-            53: "🌦️ Морось",
-            55: "🌧️ Сильная морось",
-            61: "🌦️ Небольшой дождь",
-            63: "🌧️ Дождь",
-            65: "🌧️ Сильный дождь",
-            71: "🌨️ Небольшой снег",
-            73: "❄️ Снег",
-            75: "❄️ Сильный снег",
-            77: "🌨️ Снежная крупа",
-            80: "🌦️ Ливневый дождь",
-            81: "🌧️ Сильный ливень",
-            82: "⛈️ Очень сильный ливень",
-            85: "🌨️ Снегопад",
-            86: "❄️ Сильный снегопад",
-            95: "⛈️ Гроза",
-            96: "⛈️ Гроза с градом",
-            99: "⛈️ Сильная гроза с градом"
-        }
-        return weather_descriptions.get(weather_code, "🌡️ Неизвестно")
+    def get_today_schedule(self):
+        now = datetime.now()
+        date_str = now.strftime("%d.%m.%Y")
+        day_of_week = now.strftime("%A").lower()
+        schedule = self.schedule.get(day_of_week, {})
+        return date_str, day_of_week, schedule
 
     async def get_weather_forecast(self):
-        """Получает прогноз погоды для Санкт-Петербурга"""
         try:
-            latitude = 59.9311
-            longitude = 30.3609
-            
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&timezone=Europe/Moscow&forecast_days=1"
-            
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as response:
+                async with session.get("https://wttr.in/Moscow?format=%t+%C+%w+%h+%p", timeout=10) as response:
                     if response.status == 200:
-                        data = await response.json()
-                        current = data.get('current', {})
-                        
-                        temp = current.get('temperature_2m', 'N/A')
-                        feels_like = current.get('apparent_temperature', 'N/A')
-                        humidity = current.get('relative_humidity_2m', 'N/A')
-                        precipitation = current.get('precipitation', 0)
-                        wind_speed = current.get('wind_speed_10m', 'N/A')
-                        weather_code = current.get('weather_code', 0)
-                        
-                        weather_desc = self.get_weather_description(weather_code)
-                        
-                        weather_text = f"🌍 <b>Погода в Санкт-Петербурге:</b>\n"
-                        weather_text += f"🌡️ Температура: {temp}°C (ощущается как {feels_like}°C)\n"
-                        weather_text += f"💧 Влажность: {humidity}%\n"
-                        weather_text += f"💨 Ветер: {wind_speed} км/ч\n"
-                        weather_text += f"{weather_desc}\n\n"
-                        
-                        logger.info("✅ Прогноз погоды получен")
-                        return weather_text
-                    else:
-                        logger.error(f"❌ Ошибка получения погоды: {response.status}")
-                        return ""
+                        weather_data = await response.text()
+                        parts = weather_data.strip().split()
+                        if len(parts) >= 5:
+                            temp, condition, wind, humidity, precipitation = parts[:5]
+                            return (
+                                f"🌤️ <b>Погода:</b>\n"
+                                f"🌡️ Температура: {temp}\n"
+                                f"☁️ Состояние: {condition}\n"
+                                f"💨 Ветер: {wind}\n"
+                                f"💧 Влажность: {humidity}\n"
+                                f"🌧️ Осадки: {precipitation}\n"
+                            )
+                        return "🌤️ <b>Погода:</b> Данные недоступны\n"
+                    return "🌤️ <b>Погода:</b> Ошибка получения\n"
         except Exception as e:
-            logger.error(f"❌ Ошибка получения погоды: {e}")
-            return ""
+            logger.error(f"❌ Ошибка погоды: {e}")
+            return "🌤️ <b>Погода:</b> Ошибка подключения\n"
 
     async def get_weekend_forecast(self):
-        """Получает прогноз погоды на выходные (субботу и воскресенье)"""
         try:
-            from datetime import datetime, timedelta
-            
-            latitude = 59.9311
-            longitude = 30.3609
-            
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max&timezone=Europe/Moscow&forecast_days=7"
-            
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as response:
+                async with session.get("https://wttr.in/Moscow?format=%t+%C", params={'lang': 'ru'}, timeout=10) as response:
                     if response.status == 200:
-                        data = await response.json()
-                        daily = data.get('daily', {})
-                        
-                        times = daily.get('time', [])
-                        temp_max = daily.get('temperature_2m_max', [])
-                        temp_min = daily.get('temperature_2m_min', [])
-                        precipitation = daily.get('precipitation_sum', [])
-                        weather_codes = daily.get('weather_code', [])
-                        wind_speed = daily.get('wind_speed_10m_max', [])
-                        
-                        today = datetime.now()
-                        days_until_saturday = (5 - today.weekday()) % 7
-                        if days_until_saturday == 0 and today.weekday() == 5:
-                            days_until_saturday = 0
-                        
-                        saturday_date = today + timedelta(days=days_until_saturday)
-                        sunday_date = saturday_date + timedelta(days=1)
-                        
-                        weather_text = f"📅 <b>Прогноз на выходные:</b>\n\n"
-                        
-                        for i, date_str in enumerate(times):
-                            forecast_date = datetime.fromisoformat(date_str)
-                            
-                            if forecast_date.date() == saturday_date.date():
-                                weather_desc = self.get_weather_description(weather_codes[i])
-                                weather_text += f"<b>🗓️ Суббота ({forecast_date.strftime('%d.%m')}):</b>\n"
-                                weather_text += f"🌡️ {temp_min[i]}°C ... {temp_max[i]}°C\n"
-                                weather_text += f"💨 Ветер до {wind_speed[i]} км/ч\n"
-                                weather_text += f"{weather_desc}\n"
-                                if precipitation[i] > 0:
-                                    weather_text += f"🌧️ Осадки: {precipitation[i]} мм\n"
-                                weather_text += "\n"
-                            
-                            elif forecast_date.date() == sunday_date.date():
-                                weather_desc = self.get_weather_description(weather_codes[i])
-                                weather_text += f"<b>🗓️ Воскресенье ({forecast_date.strftime('%d.%m')}):</b>\n"
-                                weather_text += f"🌡️ {temp_min[i]}°C ... {temp_max[i]}°C\n"
-                                weather_text += f"💨 Ветер до {wind_speed[i]} км/ч\n"
-                                weather_text += f"{weather_desc}\n"
-                                if precipitation[i] > 0:
-                                    weather_text += f"🌧️ Осадки: {precipitation[i]} мм\n"
-                                weather_text += "\n"
-                        
-                        logger.info("✅ Прогноз на выходные получен")
-                        return weather_text
-                    else:
-                        logger.error(f"❌ Ошибка получения прогноза на выходные: {response.status}")
                         return ""
         except Exception as e:
-            logger.error(f"❌ Ошибка получения прогноза на выходные: {e}")
+            logger.error(f"❌ Ошибка: {e}")
             return ""
 
-    def get_last_day_of_month(self, year, month, day_of_week):
-        cal = monthcalendar(year, month)
-        for week in reversed(cal):
-            if week[day_of_week] != 0:
-                return week[day_of_week]
-        return None
-
-    def get_nth_day_of_month(self, year, month, day_of_week, n):
-        cal = monthcalendar(year, month)
-        count = 0
-        for week in cal:
-            if week[day_of_week] != 0:
-                count += 1
-                if count == n:
-                    return week[day_of_week]
+    def get_last_day_of_month(self, year, month, target_weekday):
+        calendar = monthcalendar(year, month)
+        for week in reversed(calendar):
+            day = week[target_weekday]
+            if day != 0:
+                return day
         return None
 
     def get_event_date_by_rule(self, rule, year, month):
         if rule == 'last_saturday':
             day = self.get_last_day_of_month(year, month, 5)
-            return (year, month, day)
-        elif rule == 'second_saturday':
-            day = self.get_nth_day_of_month(year, month, 5, 2)
-            return (year, month, day)
+            return (year, month, day) if day else None
         elif rule == 'third_saturday':
-            day = self.get_nth_day_of_month(year, month, 5, 3)
-            return (year, month, day)
+            calendar = monthcalendar(year, month)
+            saturdays = [week[5] for week in calendar if week[5] != 0]
+            if len(saturdays) >= 3:
+                return (year, month, saturdays[2])
+        elif rule == 'second_saturday':
+            calendar = monthcalendar(year, month)
+            saturdays = [week[5] for week in calendar if week[5] != 0]
+            if len(saturdays) >= 2:
+                return (year, month, saturdays[1])
         return None
 
-    def get_today_schedule(self):
-        try:
-            today = datetime.now()
-            date_str = today.strftime("%d.%m.%Y")
-            day_of_week = today.strftime("%A").lower()
-            logger.info(f"📅 Сегодня: {date_str}, {day_of_week}")
-            today_schedule = self.schedule.get(day_of_week, {})
-            return date_str, day_of_week, today_schedule
-        except Exception as e:
-            logger.error(f"❌ Ошибка: {e}")
-            return "01.01.2024", "monday", {}
-
     def check_yesterday_penalty(self):
-        """Проверяет был ли штраф вчера"""
         try:
             from datetime import timedelta
             yesterday = datetime.now() - timedelta(days=1)
@@ -530,7 +392,6 @@ class PersonalScheduleNotifier:
             
             logger.info(f"🔍 Проверка штрафа за {yesterday_key}")
             
-            # Загружаем stats.json
             if os.path.exists('stats.json'):
                 with open('stats.json', 'r', encoding='utf-8') as f:
                     stats = json.load(f)
@@ -538,14 +399,12 @@ class PersonalScheduleNotifier:
                 logger.info(f"📊 Stats загружен, ключей: {len(stats)}")
                 
                 if yesterday_key in stats:
-                    # Считаем количество звёзд в "НЕЛЬЗЯ"
                     cant_do_completed = stats[yesterday_key].get('cant_do', {}).get('completed', [])
                     penalty_count = len(cant_do_completed)
                     
                     logger.info(f"⭐ Звёзд в НЕЛЬЗЯ: {penalty_count}, список: {cant_do_completed}")
                     
                     if penalty_count > 0:
-                        # За каждую звезду +30 отжиманий
                         total_pushups = penalty_count * 30
                         penalty_text = f"Отжимания {total_pushups} раз (5 min Штраф за {penalty_count} срыв{'а' if penalty_count > 1 else ''})"
                         logger.info(f"⚠️ ШТРАФ: {penalty_text}")
@@ -567,10 +426,8 @@ class PersonalScheduleNotifier:
         day_ru = day_names.get(day_of_week, day_of_week)
         wisdom = self.get_random_wisdom()
         
-        # Начинаем с заголовка
         content = f"🌅 <b>План на {day_ru} {date_str}</b>\n\n"
         
-        # Затем погода
         weather = await self.get_weather_forecast()
         content += weather
         
@@ -579,47 +436,44 @@ class PersonalScheduleNotifier:
             if weekend_forecast:
                 content += weekend_forecast
         
-        content += "\n"  # Пустая строка перед задачами
+        content += "\n"
         
-        # Проверяем штраф за вчера
         penalty_task = self.check_yesterday_penalty()
         if penalty_task:
             content += f"<b>⚠️ ШТРАФ ЗА ВЧЕРА:</b>\n"
             content += f"• {penalty_task}\n\n"
         
         if schedule.get('день'):
-            content += "<b>📋 Дневные задачи:</b>\n"  # Жирный, новый эмодзи
+            content += "<b>📋 Дневные задачи:</b>\n"
             
-            # Добавляем задачу для последней субботы месяца
             if day_of_week == 'saturday':
                 today = datetime.now()
                 last_saturday_day = self.get_last_day_of_month(today.year, today.month, 5)
                 if today.day == last_saturday_day:
-                    # Добавляем задачу в начало списка
                     content += "• Сделать фото-презентацию по итогам месяца\n"
             
             for task in schedule['день']:
                 content += f"• {task}\n"
         if schedule.get('нельзя_день'):
-            content += "\n<b>⛔ Нельзя делать:</b>\n"  # Жирный
+            content += "\n<b>⛔ Нельзя делать:</b>\n"
             for task in schedule['нельзя_день']:
                 content += f"• {task}\n"
         day_count = len(schedule.get('день', [])) + len(schedule.get('нельзя_день', [])) - 1
         total_target = max(0, day_count)
         
-        content += f"\n<b>Мудрость дня:</b>\n{wisdom}"  # Жирный, без 💡
+        content += f"\n<b>Мудрость дня:</b>\n{wisdom}"
         
-        # Добавляем ссылку на молитву и карьеру
         content += f"\n\n🙏 <a href='{self.prayer_url}'>Утренняя молитва</a>"
-        content += f"\n💼 <a href='{self.career_url}'>Принципы карьеры</a>"
+        content += f"\n🏢 <a href='{self.career_url}'>Принципы карьеры</a>"
         
         return content
     
-    def create_progress_button(self):
-        """Создаёт inline кнопку для обновления прогресса"""
+    def create_message_keyboard(self):
         return {
             'inline_keyboard': [
-                [{'text': '🔄 Обновить прогресс', 'callback_data': 'update_progress'}]
+                [{'text': '🔄 Обновить прогресс', 'callback_data': 'update_progress'}],
+                [{'text': '🙏 Утренняя молитва', 'url': self.prayer_url}],
+                [{'text': '🏢 Принципы карьеры', 'url': self.career_url}]
             ]
         }
 
@@ -630,14 +484,17 @@ class PersonalScheduleNotifier:
         task_count = len(schedule.get('вечер', []))
         target_score = max(0, task_count - 1)
         
-        # Заголовок в самом начале
         content = f"🌙 <b>Вечерний план на {day_ru} {date_str}</b>\n\n"
         
         if schedule.get('вечер'):
-            content += "<b>📋 Вечерние задачи:</b>\n"  # Жирный, новый эмодзи
+            content += "<b>📋 Вечерние задачи:</b>\n"
             for task in schedule['вечер']:
                 content += f"• {task}\n"
-        content += f"\n<b>Мудрость дня:</b>\n{wisdom}"  # Жирный, без 💡, без миссии
+        content += f"\n<b>Мудрость дня:</b>\n{wisdom}"
+        
+        content += f"\n\n🙏 <a href='{self.prayer_url}'>Утренняя молитва</a>"
+        content += f"\n🏢 <a href='{self.career_url}'>Принципы карьеры</a>"
+        
         return content
 
     async def fetch_event_file(self, filename):
@@ -688,7 +545,7 @@ class PersonalScheduleNotifier:
             }
             
             if add_progress_button:
-                payload['reply_markup'] = self.create_progress_button()
+                payload['reply_markup'] = self.create_message_keyboard()
             
             logger.info("📤 Отправка сообщения в Telegram...")
             async with aiohttp.ClientSession() as session:
@@ -724,7 +581,7 @@ class PersonalScheduleNotifier:
             add_button = True
             
             if day_of_week == 'sunday':
-                ss_content = True  # Флаг для добавления ссылки на семейный совет
+                ss_content = True
             reminders = self.check_recurring_events()
             if reminders:
                 for reminder in reminders:
