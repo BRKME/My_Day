@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
 Telegram бот для отслеживания выполнения задач - ФИНАЛЬНАЯ ВЕРСИЯ
-Этапы 3 и 4: Прогресс-бары + Итоги дня/недели
+Исправления:
+1. Система штрафов через Telegram API
+2. Исправление 161% → 100%
+3. Убраны звёздочки из итогов
+4. Эмодзи 📊 вместо 🌙
 """
 
 import asyncio
@@ -50,7 +54,7 @@ class TaskTrackerBot:
             line = line.strip()
             
             # Определяем секцию (убираем HTML теги для проверки)
-            clean_line = line.replace('<b>', '').replace('</b>', '')
+            clean_line = line.replace('<b>', '').replace('</b>', '').replace('<i>', '').replace('</i>', '')
             
             # НАЧАЛО СЕКЦИЙ (включаем парсинг)
             if ('📋' in clean_line or '☀️' in clean_line) and 'Дневн' in clean_line:
@@ -68,7 +72,8 @@ class TaskTrackerBot:
                 'Мудрость дня',
                 '🙏 Утренняя молитва',
                 '🎉 СЕГОДНЯ',
-                '📅 События'
+                '📅 События',
+                'Занятия детей'  # НОВОЕ: пропускаем расписание детей
             ]):
                 current_section = None
                 continue
@@ -203,7 +208,7 @@ class TaskTrackerBot:
         task_counters = {'morning': 0, 'day': 0, 'cant_do': 0, 'evening': 0}
         
         for line in cleaned_lines:
-            clean_line = line.replace('<b>', '').replace('</b>', '')
+            clean_line = line.replace('<b>', '').replace('</b>', '').replace('<i>', '').replace('</i>', '')
             
             # Определяем секцию
             if ('📋' in clean_line or '☀️' in clean_line) and 'Дневн' in clean_line:
@@ -212,16 +217,10 @@ class TaskTrackerBot:
                 continue
             elif 'Вечерние задачи' in clean_line or ('🌙' in clean_line and 'Вечерн' in clean_line) or ('📋' in clean_line and 'Вечерн' in clean_line):
                 current_section = 'evening'
-                
-                # НЕ добавляем прогресс-бар здесь - будет общий в конце
-                
                 updated_lines.append(line)
                 continue
             elif any(marker in clean_line for marker in ['⛔', '⛔️', 'Нельзя делать']):
                 current_section = 'cant_do'
-                
-                # НЕ добавляем прогресс-бар здесь - будет общий в конце
-                
                 updated_lines.append(line)
                 continue
             elif 'мудрость' in clean_line.lower() and 'дня' in clean_line.lower():
@@ -336,33 +335,41 @@ class TaskTrackerBot:
         filled = int((percentage / 100) * length)
         return '▓' * filled + '░' * (length - filled)
     
-    def get_stars(self, percentage):
-        """Возвращает звёздочки по проценту"""
-        if percentage >= 90:
-            return '⭐⭐⭐⭐⭐'
-        elif percentage >= 80:
-            return '⭐⭐⭐⭐'
-        elif percentage >= 70:
-            return '⭐⭐⭐'
-        elif percentage >= 60:
-            return '⭐⭐'
-        elif percentage >= 50:
-            return '⭐'
-        return ''
-    
     def get_motivation(self, percentage):
         """Возвращает мотивационное сообщение"""
         if percentage >= 90:
-            return "🏆 Идеально! Так держать!"
-        elif percentage >= 80:
-            return "✨ Отлично! Продуктивный день!"
+            return "🏆 <b>Идеально! Так держать!</b>"
         elif percentage >= 70:
-            return "💪 Хороший день!"
-        elif percentage >= 60:
-            return "👍 Неплохо, есть к чему стремиться"
+            return "💪 <b>Отличная работа!</b>"
         elif percentage >= 50:
-            return "📈 Слабовато, но завтра лучше!"
-        return "💪 Не сдавайся! Завтра новый день!"
+            return "👍 <b>Хороший результат!</b>"
+        else:
+            return "💡 <b>Завтра будет ещё лучше!</b>"
+    
+    async def send_penalty_message(self, cant_do_count, failed_tasks):
+        """НОВОЕ: Отправляет штрафное сообщение сразу после сохранения"""
+        try:
+            pushups = cant_do_count * 30
+            penalty_msg = f"⚠️ <b>ВНИМАНИЕ: ШТРАФ!</b>\n\n"
+            penalty_msg += f"Сегодня у тебя {cant_do_count} срыв{'а' if cant_do_count > 1 else ''} в НЕЛЬЗЯ:\n"
+            
+            for task in failed_tasks:
+                # Убираем HTML теги и "НЕ" из начала
+                clean_task = task.replace('<i>', '').replace('</i>', '').replace('<b>', '').replace('</b>', '')
+                clean_task = clean_task.split('(')[0].strip()  # Убираем пояснения в скобках
+                if clean_task.startswith('НЕ ') or clean_task.startswith('Не '):
+                    clean_task = clean_task[3:].strip()
+                penalty_msg += f"• {clean_task}\n"
+            
+            penalty_msg += f"\n<b>Завтра в утренних задачах будет:</b>\n"
+            penalty_msg += f"🏋️ Отжимания {pushups} раз <i>(Штраф за {cant_do_count} срыв{'а' if cant_do_count > 1 else ''})</i>\n\n"
+            penalty_msg += f"Держись крепче! 💪"
+            
+            await self.send_telegram_message(penalty_msg)
+            logger.info(f"⚠️ Отправлено штрафное сообщение: {pushups} отжиманий")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки штрафного сообщения: {e}")
     
     async def send_daily_summary(self):
         """ЭТАП 4: Отправляет итоги дня в 23:00"""
@@ -375,13 +382,23 @@ class TaskTrackerBot:
         
         today_data = stats[today_key]
         
+        # ОТЛАДКА: Логируем что приходит в today_data
+        logger.info(f"📊 DEBUG today_data: {today_data}")
+        logger.info(f"📊 DEBUG points={today_data.get('points')}, max_points={today_data.get('max_points')}")
+        
         # Формируем сообщение
-        message = f"🌙 <b>ИТОГИ ДНЯ - {datetime.now().strftime('%d.%m.%Y')}</b>\n\n"
+        message = f"📊 <b>ИТОГИ ДНЯ - {datetime.now().strftime('%d.%m.%Y')}</b>\n\n"
         message += "━━━━━━━━━━━━━━━━━━\n\n"
         
         # Статистика по периодам
         morning = today_data.get('morning', {})
         day = today_data.get('day', {})
+        evening = today_data.get('evening', {})
+        
+        # ОТЛАДКА: Логируем каждую секцию
+        logger.info(f"📊 DEBUG morning: completed={morning.get('completed', [])}, total={morning.get('total', 0)}")
+        logger.info(f"📊 DEBUG day: completed={day.get('completed', [])}, total={day.get('total', 0)}")
+        logger.info(f"📊 DEBUG evening: completed={evening.get('completed', [])}, total={evening.get('total', 0)}")
         
         if morning.get('total', 0) > 0:
             morning_done = len(morning.get('completed', []))
@@ -408,10 +425,8 @@ class TaskTrackerBot:
         message += f"💯 {overall_done}/{overall_total} задач ({overall_perc}%)\n"
         message += f"🏆 Баллы: {overall_done} из {overall_total}\n\n"
         
-        stars = self.get_stars(today_data.get('percentage', 0))
-        if stars:
-            message += f"{stars} "
-        message += self.get_motivation(today_data.get('percentage', 0))
+        # ИСПРАВЛЕНО: Убраны звёздочки, добавлена мотивация (используем актуальный overall_perc!)
+        message += self.get_motivation(overall_perc)
         
         message += "\n\nЗавтра будет ещё лучше! 💪"
         
@@ -461,8 +476,7 @@ class TaskTrackerBot:
         for day_data in week_data:
             perc = day_data['percentage']
             bar = self.get_progress_bar(perc)
-            stars = self.get_stars(perc)
-            message += f"{day_data['name']}: {bar} {perc}% {stars}\n"
+            message += f"{day_data['name']}: {bar} {perc}%\n"
             
             total_percentage += perc
             
@@ -769,7 +783,20 @@ class TaskTrackerBot:
         }
         
         # Сохраняем в файл
-        if self.save_stats(stats):
+        save_success = self.save_stats(stats)
+        logger.info(f"💾 Save stats result: {save_success}")
+        
+        if save_success:
+            # НОВОЕ: Отправляем штрафное сообщение если есть срывы
+            cant_do_count = len(state['completed']['cant_do'])
+            if cant_do_count > 0:
+                # Получаем названия задач НЕЛЬЗЯ
+                cant_do_tasks = state['tasks']['cant_do']
+                failed_tasks = [cant_do_tasks[i] for i in state['completed']['cant_do']]
+                
+                # Отправляем штрафное сообщение
+                await self.send_penalty_message(cant_do_count, failed_tasks)
+            
             # ЭТАП 3: Обновляем исходное сообщение с прогресс-барами
             # ВАЖНО: используем clean_original, а НЕ original_text!
             clean_text = state.get('clean_original', state['original_text'])
